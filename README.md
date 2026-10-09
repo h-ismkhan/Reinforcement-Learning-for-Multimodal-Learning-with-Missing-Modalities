@@ -12,10 +12,71 @@ classification) and a 5-modal Sleep-EDF polysomnography dataset.
 > **Status:** research code accompanying an internal method write-up. Paths, checkpoints,
 > and dataset locations are placeholders — see [Configuration](#configuration) before running.
 
+
+## Quickstart (no dataset, no GPU)
+
+The real experiments need CMU-MOSI plus BERT / WavLM / CLIP. To let anyone run the
+*whole pipeline* in a couple of minutes, `demo_synthetic.py` replaces "load media + run
+encoders" with a synthetic 3-modal embedding generator and calls the real functions in
+`rl.py` for everything else (missingness, normalisation, k-NN graph, BFS candidates,
+PPO policy, fusion head).
+
+```bash
+# Docker (recommended): runs the demo once, then serves the trained model
+docker compose up --build api
+curl -s localhost:8000/predict -H 'content-type: application/json' \
+     -d @artifacts/bundle/example_request.json      # interactive docs: http://localhost:8000/docs
+
+# or locally
+pip install -r requirements-dev.txt
+make test          # unit + end-to-end smoke tests
+make demo          # ~1.5 min on one CPU core;  `make demo-quick` ~15 s
+```
+
+Example output (synthetic data, test MSE, lower is better; seed 42):
+
+| Method | complex-20-20-20-10-10-10-10 | complete (100/100/100) |
+|---|---|---|
+| Mean predictor | 2.138 | 2.138 |
+| kNN-5, raw concat (no modality-fair scaling) | 0.325 | 0.394 |
+| kNN-5, modality-fair | **0.280** | **0.085** |
+| RL4M4: PPO hard selection | 1.303 | 0.847 |
+| RL4M4: PPO + fusion head | 0.403 | 0.126 |
+
+**How to read this.** The data are synthetic, and the generator deliberately gives the
+least informative modality (video) the largest scale, which is why modality-fair scaling
+helps so much. With only 5 PPO and 8 fusion epochs, the RL variants do **not** beat a
+plain modality-fair kNN-5 here. This demo validates the pipeline and engineering, not the
+paper's claims; those come from the CMU-MOSI runs below.
+
+### Real CMU-MOSI run
+
+```bash
+MOSI_ROOT=/path/to/CMU-MOSI docker compose --profile gpu run --rm train \
+    --missing-config complex_20_20_20_10_10_10_10 --variant with --strategy knn --seed 42
+```
+`run_mosi.py` sets dataset paths and the main experiment knobs from the command line (it
+defaults to `--variant with`, the modality-fair distance). Not tested here: it needs the
+dataset and a GPU.
+
+### Inference API
+
+`serve.py` loads a bundle (`artifacts/bundle/`: npz + json + state dicts, no pickle) and
+exposes `GET /health`, `GET /info`, `POST /predict`. Send pre-computed embeddings; any
+modality may be `null` and is zero-imputed exactly as in training.
+
+### Engineering
+
+CI (`.github/workflows/ci.yml`) runs `ruff`, `pytest` and the quick demo, then builds the
+Docker image. Tests cover the missingness simulation, modality-fair scaling and
+zero-imputation, graph/candidate-set invariants, PPO and fusion-head behaviour (including
+permutation invariance), and the API.
+
 ---
 
 ## Table of Contents
 
+- [Quickstart (no dataset, no GPU)](#quickstart-no-dataset-no-gpu)
 - [Method Overview](#method-overview)
 - [Repository Structure](#repository-structure)
 - [Datasets](#datasets)
@@ -57,10 +118,14 @@ gating networks, or generative modality hallucination are required.
 
 ```
 .
-├── mosi_reg.py     # CMU-MOSI regression Dataset with configurable missing-modality simulation
-├── rl.py           # Full pipeline: encoders → embeddings → distance → BFS graph →
-│                   #   PPO policy training → fusion head training → evaluation
-└── README.md
+├── rl.py               # full pipeline: encoders → embeddings → distance → BFS graph → PPO → fusion
+├── mosi_reg.py         # CMU-MOSI dataset with configurable missing-modality simulation
+├── demo_synthetic.py   # dataset-free end-to-end demo + baselines, exports a serving bundle
+├── serve.py            # FastAPI inference service (missing modalities = null)
+├── run_mosi.py         # CLI wrapper for real CMU-MOSI runs
+├── tests/              # pytest suite
+├── Dockerfile  docker-compose.yml  Makefile  requirements*.txt  pyproject.toml
+└── .github/workflows/ci.yml
 ```
 
 ## Datasets
