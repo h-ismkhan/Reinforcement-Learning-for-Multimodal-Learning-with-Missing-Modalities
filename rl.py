@@ -35,7 +35,6 @@ ALL TUNEABLE PARAMETERS ARE IN THE "PARAMETERS" BLOCK BELOW.
 """
 
 # ── standard library ──────────────────────────────────────────────────────────
-import os
 import copy
 import heapq
 
@@ -642,7 +641,6 @@ def build_features(q_vec, candidate_set, tr_emb, tr_labels):
     State  (D+2): [f_s ; Var(y_B) ; |B|]
     Cand   (D+4): [f_v ; norm_dist ; norm_depth ; norm_rank ; lbl_dev]
     """
-    D = q_vec.shape[0]
     n = len(candidate_set)
 
     cand_labels = np.array([float(tr_labels[idx])

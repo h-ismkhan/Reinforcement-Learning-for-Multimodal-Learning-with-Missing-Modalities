@@ -1,0 +1,50 @@
+# Quick tour
+#   docker compose up --build api        # runs the demo once, then serves the API on :8000
+#   docker compose run --rm demo --quick  # just the demo (any demo_synthetic.py flags)
+#   MOSI_ROOT=/path/to/CMU-MOSI docker compose --profile gpu run --rm train \
+#       --missing-config complex_20_20_20_10_10_10_10
+services:
+  demo:
+    build: .
+    image: rl4m4:cpu
+    command: ["python", "demo_synthetic.py", "--out-dir", "artifacts"]
+    volumes:
+      - ./artifacts:/app/artifacts
+
+  api:
+    image: rl4m4:cpu
+    build: .
+    command: ["uvicorn", "serve:app", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./artifacts:/app/artifacts:ro
+    depends_on:
+      demo:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # Real CMU-MOSI training. Not started by default (profile "gpu").
+  train:
+    profiles: ["gpu"]
+    build:
+      context: .
+      args:
+        TORCH_INDEX: https://download.pytorch.org/whl/cu121
+        INSTALL_MEDIA_LIBS: "true"
+    image: rl4m4:gpu
+    entrypoint: ["python", "run_mosi.py", "--mosi-root", "/data", "--out-dir", "artifacts/mosi"]
+    volumes:
+      - ${MOSI_ROOT:?set MOSI_ROOT to your CMU-MOSI folder}:/data:ro
+      - ./artifacts:/app/artifacts
+      - hf-cache:/opt/hf-cache          # BERT / WavLM / CLIP weights are cached here
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  hf-cache:

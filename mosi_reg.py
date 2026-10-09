@@ -29,8 +29,8 @@ def _analyze_mosi_dataset(audio_dir, video_dir, text_dir, split_path):
             }
             label_stats[split_name].append(label)
     
-    print(f"\nDataset Statistics:")
-    print(f"  Split sizes:")
+    print("\nDataset Statistics:")
+    print("  Split sizes:")
     for split_name in ['train', 'val', 'test']:
         total = len(splits[split_name])
         labels = label_stats[split_name]
@@ -148,11 +148,11 @@ class MOSIDatasetRegression(Dataset):
         print(f"MOSI Dataset Regression: {self.split} split")
         print(f"  Config: {self.missing_config} | Seed: {self.seed}")
         print(f"  Total samples: {total}")
-        print(f"  Label statistics:")
+        print("  Label statistics:")
         print(f"    Range: [{min_label:.2f}, {max_label:.2f}]")
         print(f"    Mean: {mean_label:.2f}, Std: {std_label:.2f}")
         print(f"    Positive (>=0): {pos_count} ({100*pos_count/total:.1f}%), Negative (<0): {neg_count} ({100*neg_count/total:.1f}%)")
-        print(f"  Modality availability:")
+        print("  Modality availability:")
         
         for (t, a, v), count in sorted(counts.items(), key=lambda x: -x[1]):
             modalities = []
@@ -246,7 +246,7 @@ if __name__ == "__main__":
     text_dir = "/home/office/Downloads/_Dataset/Raw - CMU Multimodal Opinion Sentiment Intensity/Transcript/Segmented"
     split_file = "/home/office/Downloads/_Dataset/Raw - CMU Multimodal Opinion Sentiment Intensity/mosi_splits-70train.json"
     
-    analyze_mosi_dataset(audio_dir, video_dir, text_dir, split_file)
+    _analyze_mosi_dataset(audio_dir, video_dir, text_dir, split_file)
     
     dataset = MOSIDatasetRegression(
         audio_dir=audio_dir,
