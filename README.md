@@ -33,7 +33,7 @@ make test          # unit + end-to-end smoke tests
 make demo          # ~1.5 min on one CPU core;  `make demo-quick` ~15 s
 ```
 
-Example output (synthetic data, test MSE, lower is better; seed 42):
+Example output (**__synthetic__** data, test MSE, lower is better; seed 42):
 
 | Method | complex-20-20-20-10-10-10-10 | complete (100/100/100) |
 |---|---|---|
